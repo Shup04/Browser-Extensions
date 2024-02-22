@@ -1,0 +1,15 @@
+{
+    "manifest_version": 3,
+    "name": "Remove Facebook Sudgested",
+    "version": "1.0",
+    "description": "Removes all facebook sudgested for you posts.",
+    "permissions": ["activeTab"],
+    "content_scripts": [
+      {
+        "matches": ["*://www.facebook.com/*"],
+        "js": ["contentScript.js"],
+        "run_at": "document_idle"
+      }
+    ]
+  }
+  
