@@ -1,64 +1,104 @@
 # Browser Extensions
 
-Two small personal browser extensions for removing unwanted recommendation sections from Facebook and YouTube. Facebook's **Suggested for you** posts and YouTube's **Shorts shelves** are the specific targets.
+Two small personal utilities for cleaning up Facebook and YouTube feeds. Each is
+an independent extension with no settings, account, backend, or build step needed
+to use it.
 
-The original description calls these “quick things made for personal use.” The implementation follows that scope: inspect the page already displayed in the browser, remove matching elements, and repeat as more content arrives. There is no service, account system, build pipeline, or filtering backend. The useful idea is being able to change what appears in a personal feed with a few direct DOM operations.
-
-## What each extension does
-
-| Extension | Entry point | Removal rule |
+| Extension | What it removes | Source / ZIP |
 | --- | --- | --- |
-| Facebook | [`FBSudgestedRemove/contentScript.jsx`](FBSudgestedRemove/contentScript.jsx) | Find matching English text in spans, walk up to a `div.x1lliihq` ancestor, and remove that ancestor. |
-| YouTube | [`YTShortsRemover/contentScript.js`](YTShortsRemover/contentScript.js) | Remove every `ytd-rich-section-renderer` and `ytd-reel-shelf-renderer` element. |
+| Facebook Suggested Remover | The nearest `div.x1lliihq` around a span containing `Suggested for you` or `Follow`. | [Folder](FBSudgestedRemove) / [ZIP](FBSudgestedRemove/FBRemover.zip) |
+| YouTube Shorts Remover | All `ytd-rich-section-renderer` and `ytd-reel-shelf-renderer` elements. | [Folder](YTShortsRemover) / [ZIP](YTShortsRemover/YTShortsRemove.zip) |
 
-The Facebook script makes two passes: one for spans containing `Suggested for you`, then one for spans containing `Follow`. The ancestor walk is how it attempts to remove the surrounding feed item instead of only its label. The `.jsx` file contains ordinary JavaScript; there is no React or JSX syntax to compile.
+Both run when the page loads and watch for new content with a `MutationObserver`.
+The scripts make no network requests and store no data. YouTube's toolbar popup
+is an explanatory message, not a toggle.
 
-The YouTube script uses element names instead of visible text. Its two selectors are intended to catch Shorts-related shelves, but the code does not inspect a section's contents to establish that it contains Shorts. It also does not block a Shorts URL or disable video playback.
+## Install for personal use
 
-Both scripts run once when injected and then attach a `MutationObserver` to `document.body`, watching child-list changes throughout the subtree. This matters because feed content keeps arriving after the initial page load. Each callback rescans the document; neither script limits its search to the newly added nodes.
+The target is desktop **Chrome/Chromium using Manifest V3**. Facebook already used
+V3; YouTube now uses the same format so its `action` popup is valid. Chrome no
+longer supports V2 extensions ([Chrome's support timeline](https://developer.chrome.com/docs/extensions/develop/migrate/mv2-deprecation-timeline)).
+Other browser families have not been validated.
 
-The [YouTube popup](YTShortsRemover/popup.html) is only an explanatory message. It contains no settings, toggle, or filtering logic. The content scripts themselves make no network requests and store no data; their effect is removing elements from the current page and logging to the browser console.
+1. Download or clone the repository, or download and extract one of the ZIPs above.
+2. Open `chrome://extensions` and enable **Developer mode**.
+3. Choose **Load unpacked** and select `FBSudgestedRemove`, `YTShortsRemover`, or
+   the extracted ZIP folder containing `manifest.json`. Do not select the
+   repository root. Load each extension separately if you want both.
+4. Open or reload `www.facebook.com` or `www.youtube.com`. They run automatically
+   on their matching site; disable them from `chrome://extensions` when needed.
 
-## Why this approach, and its boundaries
+Only the `www` hosts match. Mobile and bare-domain URLs are outside the manifest
+scope. The old Facebook `.jsx` filename has been corrected to `contentScript.js`;
+it is ordinary JavaScript and needs no compilation. Neither extension needs the
+old `activeTab` permission: injection uses the manifest's
+[static content-script declarations](https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts#inject_with_static_declarations).
 
-The code treats feed cleanup as a local presentation problem. It does not try to alter a recommendation algorithm or fetch a different feed. A content script can act directly on the elements the site has rendered, and the observer keeps the same rule active during dynamic loading. This explains the project's small size and lack of application infrastructure.
+## Known limits
 
-That simplicity depends on specific page structures. Facebook's English labels and generated CSS class are part of the rule. `Follow` is broader than a recommendation label, and YouTube's selectors remove whole renderer types without checking their purpose. Those choices can remove unintended content or stop matching after a site change. Current live-site behavior has not been verified, so the names of the extensions describe their intended targets, not a guarantee about every page they remove.
+These are completed personal utilities with deliberately small filtering rules.
+The original filtering scripts are unchanged by the packaging cleanup.
 
-## Repository and packaging
+- Facebook depends on English text and a generated CSS class. `Follow` is a broad
+  substring match and can remove an ordinary post or follow control with the same
+  ancestor structure.
+- YouTube removes whole renderer types without checking their contents. It can
+  remove non-Shorts sections too; it does not block Shorts URLs, links, or playback.
+- Site markup can change. Each observer rescans the document after child-list
+  changes, so busy feeds may do unnecessary work.
 
-Each directory contains a manifest and its script. YouTube also contains the popup. The two ZIPs are packaged copies of those files:
+## Validate and rebuild
 
-- [`FBSudgestedRemove/FBRemover.zip`](FBSudgestedRemove/FBRemover.zip)
-- [`YTShortsRemover/YTShortsRemove.zip`](YTShortsRemover/YTShortsRemove.zip)
+Development checks require Node.js 22+ and Python 3.9+ available as `python3`.
+Playwright is a development dependency only; the installed extensions have no
+npm dependencies.
 
-The archived files were inspected and are byte-for-byte identical to their corresponding source files. The ZIPs do not contain a separate, newer implementation.
+```sh
+npm ci
+npm run check
+npx playwright install chromium
+npm test
+```
 
-**The Facebook package needs a filename correction before loading.** Its [manifest](FBSudgestedRemove/manifest.json) requests `contentScript.js`, but the directory and ZIP both contain `contentScript.jsx`. The manifest and actual filename must agree. This README documents the mismatch; the files have not been repaired.
+`npm run check` validates Manifest V3, checks that all declared scripts and the
+popup exist, runs `node --check` on JavaScript, and verifies that the committed
+ZIPs exactly match reproducible packages made from those files. The packaging
+script includes only the manifest, declared content scripts/styles, and popup.
+If future changes add icons or other assets, extend it to include them.
 
-Facebook declares Manifest V3. The [YouTube manifest](YTShortsRemover/manifest.json) declares Manifest V2 and includes an `action` entry for the popup. Compatibility must be checked against the chosen browser and version; neither package has a recorded current-browser validation here. Both manifests target the `www` host of their respective site and request `activeTab`.
+After changing a packaged file, run `npm run package` to rebuild both ZIPs, then
+`npm test`. Commit the updated ZIPs with their sources. Rebuilding the same files
+produces the same bytes, regardless of source timestamps; npm files and tests are
+never included.
 
-## Loading a development copy
+The browser tests load both source directories and freshly extracted ZIPs in
+isolated Chromium profiles. They check initial removal, dynamically added content,
+simulated in-site navigation, unaffected fixture content, host boundaries, and
+the YouTube popup page. HTTP requests are answered with synthetic HTML; the tests
+never visit the real sites or use an account. GitHub Actions runs these checks
+for pull requests.
 
-No npm packages, bundler, or compilation step are required.
+To use an existing Chromium executable, set `CHROMIUM_PATH` when running tests.
+If a managed browser forbids extension installation, this reduced check exercises
+the scripts directly and **does not validate installation or host matching**:
 
-1. Choose the browser/version that will be supported and use a separate browser profile for checking behavior.
-2. Resolve the Facebook manifest/script filename mismatch in the development copy. Check the YouTube manifest fields against that browser's supported extension format.
-3. Use the browser's extension-development controls to load the individual extension directory. The repository root contains two independent extensions and is not itself an extension package.
-4. Inspect any loading errors, then visit the matching `www.facebook.com` or `www.youtube.com` page. Check the initial feed and newly loaded content while scrolling.
-5. Check ordinary posts and videos as well as the sections intended for removal. A console message that something was removed does not establish that the correct content was removed.
+```sh
+CONTENT_SCRIPT_ONLY=1 CHROMIUM_PATH=/usr/bin/chromium npm test
+```
 
-Extracting the committed Facebook ZIP does not bypass its filename mismatch. Installing an extension and exercising either live site were not part of the source review behind this README.
+## Live-browser review
 
-## Where development stopped
+Automated fixtures cannot establish whether today's Facebook or YouTube markup
+still matches the rules. Before relying on the extensions, check in a separate
+browser profile and record the browser version and date:
 
-The two original February 2024 commits uploaded the utilities and added the short personal-use description. There is no later implementation history in this checkout. The core removal routines and dynamic-page observers exist; packaging consistency and a documented browser/site check are the remaining practical requirements for calling these finished personal tools.
+- Both unpacked folders and extracted ZIPs load without extension errors, and
+  the YouTube toolbar popup opens.
+- Representative recommendations and Shorts shelves disappear. Check ordinary
+  posts, videos, and follow controls for unintended removal.
+- Scrolling and in-site navigation still work without repeated visible disruption
+  or excessive observer activity.
 
-## Definition of done
-
-Closure can be a working pair of small extensions for one documented browser/version. It does not require an extension-store release, settings system, or support for every browser.
-
-- [ ] Both extensions load without manifest or missing-file errors in that chosen browser; the Facebook filename mismatch and YouTube manifest compatibility are resolved.
-- [ ] On representative pages, the intended Facebook recommendations and YouTube Shorts shelves disappear while ordinary posts, videos, and follow controls that should remain are preserved. Record the cases checked.
-- [ ] The same behavior holds after scrolling and in-site navigation, without repeated visible disruption or runaway observer activity.
-- [ ] Rebuild the ZIPs from the verified source and confirm that loading their extracted contents reproduces the same behavior. Record the browser/version, verification date, and any known page or language limits.
+The cloud review on 2026-11-05 used Chromium 155.0.8059.79. Its managed policy
+blocks extension installation, so local browser checks use the reduced mode
+above. Authenticated live-site behavior and toolbar interaction were not tested.
