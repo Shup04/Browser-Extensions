@@ -1,0 +1,28 @@
+name: Validate extensions
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      # This hosted image includes Chromium's system libraries. Extension tests
+      # need the full browser, not the separate headless shell or extra fonts.
+      - run: npx playwright install --no-shell chromium
+      - run: npm test

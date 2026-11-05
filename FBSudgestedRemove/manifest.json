@@ -1,15 +1,17 @@
 {
-    "manifest_version": 3,
-    "name": "Remove Facebook Sudgested",
-    "version": "1.0",
-    "description": "Removes all facebook sudgested for you posts.",
-    "permissions": ["activeTab"],
-    "content_scripts": [
-      {
-        "matches": ["*://www.facebook.com/*"],
-        "js": ["contentScript.js"],
-        "run_at": "document_idle"
-      }
-    ]
-  }
-  
+  "manifest_version": 3,
+  "name": "Remove Facebook Suggested",
+  "version": "1.0.1",
+  "description": "Removes matching Suggested for you and Follow posts from Facebook.",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.facebook.com/*"
+      ],
+      "js": [
+        "contentScript.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
