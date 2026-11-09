@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -22,5 +22,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # This hosted image includes Chromium's system libraries. Extension tests
+      # need the full browser, not the separate headless shell or extra fonts.
+      - run: npx playwright install --no-shell chromium
       - run: npm test
