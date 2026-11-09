@@ -1,20 +1,20 @@
 {
-    "manifest_version": 2,
-    "name": "YouTube Shorts Remover",
-    "version": "1.0",
-    "description": "Removes shorts from YouTube.",
-    "permissions": [
-      "activeTab"
-    ],
-    "content_scripts": [
-      {
-        "matches": ["*://www.youtube.com/*"],
-        "js": ["contentScript.js"],
-        "run_at": "document_idle"
-      }
-    ],
-    "action": {
-      "default_popup": "popup.html"
+  "manifest_version": 3,
+  "name": "YouTube Shorts Remover",
+  "version": "1.0.1",
+  "description": "Removes Shorts shelves from YouTube.",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.youtube.com/*"
+      ],
+      "js": [
+        "contentScript.js"
+      ],
+      "run_at": "document_idle"
     }
+  ],
+  "action": {
+    "default_popup": "popup.html"
   }
-  
+}
